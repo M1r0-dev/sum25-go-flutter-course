@@ -28,51 +28,32 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Lab 01 Demo'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: const [
-              // Profile Card Example
-              Text(
-                'Profile Card Example',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 8),
-              ProfileCard(
-                name: 'John Doe',
-                email: 'john@example.com',
-                age: 30,
-                avatarUrl: null, // или URL, если нужен аватар
-              ),
-              SizedBox(height: 24),
-              // Counter Example
-              Text(
-                'Counter Example',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 8),
-              CounterApp(),
-              SizedBox(height: 24),
-              // Registration Form Example
-              Text(
-                'Registration Form Example',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 8),
-              RegistrationForm(),
-              SizedBox(height: 24),
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: const Text('Lab 01 Demo'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Profile'),
+              Tab(text: 'Counter'),
+              Tab(text: 'Register'),
             ],
           ),
+        ),
+        body: const TabBarView(
+          children: [
+            Center(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(16.0),
+                // TODO: change to ProfileCard
+                child: SizedBox.shrink(),
+              ),
+            ),
+            CounterApp(),
+            RegistrationForm(),
+          ],
         ),
       ),
     );

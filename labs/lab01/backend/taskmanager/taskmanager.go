@@ -5,13 +5,10 @@ import (
 	"time"
 )
 
+// Predefined errors
 var (
-	// ErrTaskNotFound is returned when a task is not found
 	ErrTaskNotFound = errors.New("task not found")
-	// ErrEmptyTitle is returned when the task title is empty
-	ErrEmptyTitle = errors.New("task title cannot be empty")
-	// ErrInvalidID is returned when the task ID is invalid
-	ErrInvalidID = errors.New("invalid task ID")
+	ErrEmptyTitle   = errors.New("title cannot be empty")
 )
 
 // Task represents a single task
@@ -25,14 +22,14 @@ type Task struct {
 
 // TaskManager manages a collection of tasks
 type TaskManager struct {
-	tasks  map[int]*Task
+	tasks  map[int]Task
 	nextID int
 }
 
 // NewTaskManager creates a new task manager
 func NewTaskManager() *TaskManager {
 	return &TaskManager{
-		tasks:  make(map[int]*Task),
+		tasks:  make(map[int]Task),
 		nextID: 1,
 	}
 }
@@ -49,12 +46,12 @@ func (tm *TaskManager) AddTask(title, description string) (*Task, error) {
 		Done:        false,
 		CreatedAt:   time.Now(),
 	}
-	tm.tasks[tm.nextID] = &task
+	tm.tasks[tm.nextID] = task
 	tm.nextID++
 	return &task, nil
 }
 
-// UpdateTask updates an existing task
+// UpdateTask updates an existing task, returns an error if the title is empty or the task is not found
 func (tm *TaskManager) UpdateTask(id int, title, description string, done bool) error {
 	if title == "" {
 		return ErrEmptyTitle
@@ -68,7 +65,7 @@ func (tm *TaskManager) UpdateTask(id int, title, description string, done bool) 
 	return ErrTaskNotFound
 }
 
-// DeleteTask removes a task from the manager
+// DeleteTask removes a task from the manager, returns an error if the task is not found
 func (tm *TaskManager) DeleteTask(id int) error {
 	if _, ok := tm.tasks[id]; ok {
 		delete(tm.tasks, id)
@@ -80,7 +77,7 @@ func (tm *TaskManager) DeleteTask(id int) error {
 // GetTask retrieves a task by ID
 func (tm *TaskManager) GetTask(id int) (*Task, error) {
 	if task, ok := tm.tasks[id]; ok {
-		return task, nil
+		return &task, nil
 	}
 	return nil, ErrTaskNotFound
 }
@@ -89,7 +86,7 @@ func (tm *TaskManager) GetTask(id int) (*Task, error) {
 func (tm *TaskManager) ListTasks(filterDone *bool) []*Task {
 	tasks := make([]*Task, 0, len(tm.tasks))
 	for _, task := range tm.tasks {
-		tasks = append(tasks, task)
+		tasks = append(tasks, &task)
 	}
 	return tasks
 }

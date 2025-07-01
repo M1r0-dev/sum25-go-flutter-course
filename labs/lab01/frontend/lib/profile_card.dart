@@ -7,67 +7,35 @@ class ProfileCard extends StatelessWidget {
   final String? avatarUrl;
 
   const ProfileCard({
-    Key? key,
+    super.key,
     required this.name,
     required this.email,
     required this.age,
     this.avatarUrl,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    String initials() {
-      final trimmed = name.trim();
-      if (trimmed.isEmpty) return '?';
-      return trimmed[0].toUpperCase();
-    }
-
-    final hasUrl = avatarUrl != null && avatarUrl!.trim().isNotEmpty;
-
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: Colors.grey.shade200,
-            child: hasUrl
-                ? ClipOval(
-                    child: Image.network(
-                      avatarUrl!.trim(),
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) {
-                        // если не загрузилось, показываем инициалы
-                        return Center(
-                          child: Text(
-                            initials(),
-                            style: TextStyle(
-                              fontSize: 20,
-                              color: Colors.grey.shade700,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  )
-                : Text(
-                    initials(),
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: Colors.grey.shade700,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-          ),
-          const SizedBox(height: 8),
-          Text(name),
-          Text(email),
-          Text('Age: $age'),
-        ],
+    return Card(
+      margin: const EdgeInsets.all(16.0),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // TODO: add a CircleAvatar with radius 50 and backgroundImage NetworkImage(avatarUrl!) if url is not null and text name[0].toUpperCase() if url is null
+            
+            const SizedBox(height: 16),
+            // TODO: add a Text with name and style fontSize: 24, fontWeight: FontWeight.bold
+           
+            const SizedBox(height: 8),
+            // TODO: add a Text with Age: $age and style fontSize: 16
+           
+            const SizedBox(height: 8),
+            // TODO: add a Text with email and style fontSize: 16, color: Colors.grey
+            
+          ],
+        ),
       ),
     );
   }
