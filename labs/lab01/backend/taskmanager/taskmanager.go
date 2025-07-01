@@ -60,6 +60,7 @@ func (tm *TaskManager) UpdateTask(id int, title, description string, done bool) 
 		task.Title = title
 		task.Description = description
 		task.Done = done
+		tm.tasks[id] = task
 		return nil
 	}
 	return ErrTaskNotFound
@@ -84,9 +85,14 @@ func (tm *TaskManager) GetTask(id int) (*Task, error) {
 
 // ListTasks returns all tasks, optionally filtered by done status
 func (tm *TaskManager) ListTasks(filterDone *bool) []*Task {
-	tasks := make([]*Task, 0, len(tm.tasks))
-	for _, task := range tm.tasks {
-		tasks = append(tasks, &task)
+	var list []*Task
+	for _, t := range tm.tasks {
+		if filterDone != nil && t.Done != *filterDone {
+			continue
+		}
+		// создаём копию, чтобы каждый указатель был на свой объект
+		taskCopy := t
+		list = append(list, &taskCopy)
 	}
-	return tasks
+	return list
 }
