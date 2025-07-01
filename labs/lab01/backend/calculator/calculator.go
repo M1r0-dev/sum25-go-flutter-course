@@ -20,7 +20,7 @@ func Subtract(a, b float64) float64 {
 
 // Multiply multiplies two float64 numbers
 func Multiply(a, b float64) float64 {
-	return a * b
+	return (a * b)
 }
 
 // Divide divides a by b, returns an error if b is zero
