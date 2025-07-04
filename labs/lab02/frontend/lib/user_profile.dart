@@ -1,10 +1,9 @@
+// user_profile.dart
 import 'package:flutter/material.dart';
-import 'package:lab02_chat/user_service.dart';
+import 'user_service.dart';
 
-// UserProfile displays and updates user info
 class UserProfile extends StatefulWidget {
-  final UserService
-      userService; // Accepts a user service for fetching user info
+  final UserService userService;
   const UserProfile({Key? key, required this.userService}) : super(key: key);
 
   @override
@@ -12,21 +11,46 @@ class UserProfile extends StatefulWidget {
 }
 
 class _UserProfileState extends State<UserProfile> {
-  // TODO: Add state for user data, loading, and error
-  // TODO: Fetch user info from userService (simulate for tests)
+  String? _name, _email;
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    // TODO: Fetch user info and update state
+    widget.userService.fetchUser().then((data) {
+      setState(() {
+        _name = data['name'];
+        _email = data['email'];
+        _loading = false;
+      });
+    }).catchError((e) {
+      setState(() {
+        _error = 'error: ${e.toString()}';
+        _loading = false;
+      });
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    // TODO: Build user profile UI with loading, error, and user info
-    return Scaffold(
-      appBar: AppBar(title: const Text('User Profile')),
-      body: const Center(child: Text('TODO: Implement user profile UI')),
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return Center(
+        child: Text(
+          _error!,
+          style: const TextStyle(color: Colors.red),
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(_name!),
+        Text(_email!),
+      ],
     );
   }
 }
