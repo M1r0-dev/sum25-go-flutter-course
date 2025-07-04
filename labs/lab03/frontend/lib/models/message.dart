@@ -1,5 +1,8 @@
-import 'dart:convert';
+import 'package:json_annotation/json_annotation.dart';
 
+part 'message.g.dart';
+
+@JsonSerializable()
 class Message {
   final int id;
   final String username;
@@ -13,25 +16,11 @@ class Message {
     required this.timestamp,
   });
 
-  factory Message.fromJson(Map<String, dynamic> json) {
-    return Message(
-      id: json['id'] as int,
-      username: json['username'] as String,
-      content: json['content'] as String,
-      timestamp: DateTime.parse(json['timestamp'] as String),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'username': username,
-      'content': content,
-      'timestamp': timestamp.toIso8601String(),
-    };
-  }
+  factory Message.fromJson(Map<String, dynamic> json) => _$MessageFromJson(json);
+  Map<String, dynamic> toJson() => _$MessageToJson(this);
 }
 
+@JsonSerializable()
 class CreateMessageRequest {
   final String username;
   final String content;
@@ -41,25 +30,18 @@ class CreateMessageRequest {
     required this.content,
   });
 
-  Map<String, dynamic> toJson() {
-    return {
-      'username': username,
-      'content': content,
-    };
-  }
+  factory CreateMessageRequest.fromJson(Map<String, dynamic> json) =>
+      _$CreateMessageRequestFromJson(json);
+  Map<String, dynamic> toJson() => _$CreateMessageRequestToJson(this);
 
-  /// Returns an error message if validation fails, otherwise null.
   String? validate() {
-    if (username.isEmpty) {
-      return 'Username is required';
-    }
-    if (content.isEmpty) {
-      return 'Content is required';
-    }
+    if (username.trim().isEmpty) return 'Username is required';
+    if (content.trim().isEmpty) return 'Content is required';
     return null;
   }
 }
 
+@JsonSerializable()
 class UpdateMessageRequest {
   final String content;
 
@@ -67,24 +49,24 @@ class UpdateMessageRequest {
     required this.content,
   });
 
-  Map<String, dynamic> toJson() {
-    return {
-      'content': content,
-    };
-  }
+  factory UpdateMessageRequest.fromJson(Map<String, dynamic> json) =>
+      _$UpdateMessageRequestFromJson(json);
+  Map<String, dynamic> toJson() => _$UpdateMessageRequestToJson(this);
 
-  /// Returns an error message if validation fails, otherwise null.
   String? validate() {
-    if (content.isEmpty) {
-      return 'Content is required';
-    }
+    if (content.trim().isEmpty) return 'Content is required';
     return null;
   }
 }
 
+@JsonSerializable()
 class HTTPStatusResponse {
+  @JsonKey(name: 'status_code')
   final int statusCode;
+
+  @JsonKey(name: 'image_url')
   final String imageUrl;
+
   final String description;
 
   HTTPStatusResponse({
@@ -93,15 +75,12 @@ class HTTPStatusResponse {
     required this.description,
   });
 
-  factory HTTPStatusResponse.fromJson(Map<String, dynamic> json) {
-    return HTTPStatusResponse(
-      statusCode: json['status_code'] as int,
-      imageUrl: json['image_url'] as String,
-      description: json['description'] as String,
-    );
-  }
+  factory HTTPStatusResponse.fromJson(Map<String, dynamic> json) =>
+      _$HTTPStatusResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$HTTPStatusResponseToJson(this);
 }
 
+@JsonSerializable(genericArgumentFactories: true)
 class ApiResponse<T> {
   final bool success;
   final T? data;
@@ -115,31 +94,10 @@ class ApiResponse<T> {
 
   factory ApiResponse.fromJson(
     Map<String, dynamic> json,
-    T Function(Map<String, dynamic>)? fromJsonT,
-  ) {
-    final bool success = json['success'] as bool;
-    T? data;
-    if (json.containsKey('data') && json['data'] != null && fromJsonT != null) {
-      data = fromJsonT(json['data'] as Map<String, dynamic>);
-    }
-    final String? error = json['error'] as String?;
-    return ApiResponse<T>(
-      success: success,
-      data: data,
-      error: error,
-    );
-  }
+    T Function(Object? json) fromJsonT,
+  ) =>
+      _$ApiResponseFromJson(json, fromJsonT);
 
-  Map<String, dynamic> toJson(Object? Function(T value)? toJsonT) {
-    final map = <String, dynamic>{
-      'success': success,
-    };
-    if (data != null) {
-      map['data'] = toJsonT != null ? toJsonT(data as T) : data;
-    }
-    if (error != null) {
-      map['error'] = error;
-    }
-    return map;
-  }
+  Map<String, dynamic> toJson(Object? Function(T value) toJsonT) =>
+      _$ApiResponseToJson(this, toJsonT);
 }

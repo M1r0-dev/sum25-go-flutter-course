@@ -1,11 +1,25 @@
+// lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'screens/chat_screen.dart';
+
 import 'services/api_service.dart';
 import 'models/message.dart';
+import 'models/message.dart'; 
+import 'screens/chat_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        Provider<ApiService>(create: (_) => ApiService()),
+        ChangeNotifierProvider<ChatProvider>(
+          create: (ctx) => ChatProvider(ctx.read<ApiService>()),
+        ),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -13,63 +27,52 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        Provider<ApiService>(
-          create: (_) => ApiService(),
-          dispose: (_, service) => service.dispose(),
+    return MaterialApp(
+      title: 'Lab 03 REST API Chat',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue)
+            .copyWith(secondary: Colors.orange),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          elevation: 2,
         ),
-        ChangeNotifierProvider<ChatProvider>(
-          create: (context) => ChatProvider(context.read<ApiService>()),
-        ),
-      ],
-      child: MaterialApp(
-        title: 'Lab 03 REST API Chat',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          colorScheme: ColorScheme.fromSwatch(
-            primarySwatch: Colors.blue,
-          ).copyWith(secondary: Colors.orange),
-          appBarTheme: const AppBarTheme(
-            centerTitle: true,
-            elevation: 2,
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            shape: const StadiumBorder(),
           ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              textStyle: const TextStyle(fontSize: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-          useMaterial3: true,
         ),
-        home: const ChatScreen(),
+        useMaterial3: true,
       ),
+      home: const ChatScreen(),
     );
   }
 }
 
-/// Provider class for managing chat state and API interactions
+
 class ChatProvider extends ChangeNotifier {
   final ApiService _apiService;
-  List<Message> _messages = [];
-  bool _isLoading = false;
-  String? _error;
 
   ChatProvider(this._apiService) {
     loadMessages();
   }
 
+  List<Message> _messages = [];
+  bool _isLoading = false;
+  String? _error;
+
   List<Message> get messages => _messages;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  /// Load messages from the API
   Future<void> loadMessages() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
+
     try {
       _messages = await _apiService.getMessages();
     } catch (e) {
@@ -80,52 +83,61 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  /// Create a new message via API and update local list
-  Future<void> createMessage(CreateMessageRequest request) async {
-    try {
-      final newMessage = await _apiService.createMessage(request);
-      _messages.insert(0, newMessage);
+  Future<void> createMessage(String username, String content) async {
+    final req = CreateMessageRequest(username: username, content: content);
+    final validation = req.validate();
+    if (validation != null) {
+      _error = validation;
       notifyListeners();
+      return;
+    }
+
+    try {
+      final msg = await _apiService.createMessage(req);
+      _messages.insert(0, msg);
+      _error = null;
     } catch (e) {
       _error = e.toString();
-      notifyListeners();
     }
+    notifyListeners();
   }
 
-  /// Update an existing message
-  Future<void> updateMessage(int id, UpdateMessageRequest request) async {
+  Future<void> updateMessage(int id, String newContent) async {
+    final req = UpdateMessageRequest(content: newContent);
+    final validation = req.validate();
+    if (validation != null) {
+      _error = validation;
+      notifyListeners();
+      return;
+    }
+
     try {
-      final updated = await _apiService.updateMessage(id, request);
-      final index = _messages.indexWhere((m) => m.id == id);
-      if (index != -1) {
-        _messages[index] = updated;
-        notifyListeners();
-      }
+      final updated = await _apiService.updateMessage(id, req);
+      final i = _messages.indexWhere((m) => m.id == id);
+      if (i != -1) _messages[i] = updated;
+      _error = null;
     } catch (e) {
       _error = e.toString();
-      notifyListeners();
     }
+    notifyListeners();
   }
 
-  /// Delete a message
   Future<void> deleteMessage(int id) async {
     try {
       await _apiService.deleteMessage(id);
       _messages.removeWhere((m) => m.id == id);
-      notifyListeners();
+      _error = null;
     } catch (e) {
       _error = e.toString();
-      notifyListeners();
     }
+    notifyListeners();
   }
 
-  /// Refresh messages by clearing and reloading
   Future<void> refreshMessages() async {
     _messages.clear();
     await loadMessages();
   }
 
-  /// Clear any existing error
   void clearError() {
     _error = null;
     notifyListeners();
