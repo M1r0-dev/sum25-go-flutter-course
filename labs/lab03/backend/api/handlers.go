@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"lab03-backend/models"
 	"lab03-backend/storage"
 	"log"
@@ -37,6 +38,8 @@ func (h *Handler) SetupRoutes() *mux.Router {
 	api.HandleFunc("/messages/{id}", h.DeleteMessage).Methods("DELETE")
 	api.HandleFunc("/status/{code}", h.GetHTTPStatus).Methods("GET")
 	api.HandleFunc("/health", h.HealthCheck).Methods("GET")
+	api.HandleFunc("/cat/{code}", h.ProxyCat).Methods("GET")
+	api.HandleFunc("/status/{code}", h.GetHTTPStatus).Methods("GET")
 
 	return r
 }
@@ -127,9 +130,16 @@ func (h *Handler) GetHTTPStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	host := r.Host
+	var imageURL string
+	if r.TLS != nil {
+		imageURL = fmt.Sprintf("https://%s/api/cat/%d", host, code)
+	} else {
+		imageURL = fmt.Sprintf("http://%s/api/cat/%d", host, code)
+	}
 	payload := models.HTTPStatusResponse{
 		StatusCode:  code,
-		ImageURL:    fmt.Sprintf("https://http.cat/%d", code),
+		ImageURL:    imageURL,
 		Description: getHTTPStatusDescription(code),
 	}
 
@@ -147,7 +157,7 @@ func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 		Timestamp     time.Time `json:"timestamp"`
 		TotalMessages int       `json:"total_messages"`
 	}{
-		Status:        "ok",
+		Status:        "healthy",
 		Message:       "API is running",
 		Timestamp:     time.Now(),
 		TotalMessages: h.storage.Count(),
@@ -201,10 +211,29 @@ func getHTTPStatusDescription(code int) string {
 	}
 }
 
+func (h *Handler) ProxyCat(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	code := vars["code"]
+	// fetch the real image
+	resp, err := http.Get("https://http.cat/" + code)
+	if err != nil {
+		http.Error(w, "cannot fetch image", http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+	// copy headers & status
+	for k, v := range resp.Header {
+		w.Header()[k] = v
+	}
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.WriteHeader(resp.StatusCode)
+	io.Copy(w, resp.Body)
+}
+
 // CORS middleware
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 

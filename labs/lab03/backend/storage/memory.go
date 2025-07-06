@@ -16,20 +16,18 @@ type MemoryStorage struct {
 // NewMemoryStorage creates a new in-memory storage instance
 func NewMemoryStorage() *MemoryStorage {
 	return &MemoryStorage{
-		messages: make(map[int]*models.Message),
+		messages: make(map[int]*models.Message, 0),
 		nextID:   1,
 	}
 }
 
 // GetAll returns all messages
-func (ms *MemoryStorage) GetAll() []*models.Message {
-	ms.mutex.RLock()
-	defer ms.mutex.RUnlock()
-	var messages []*models.Message
-	for _, msg := range ms.messages {
-		messages = append(messages, msg)
+func (m *MemoryStorage) GetAll() []*models.Message {
+	msgs := make([]*models.Message, 0, len(m.messages))
+	for _, msg := range m.messages {
+		msgs = append(msgs, msg)
 	}
-	return messages
+	return msgs
 }
 
 // GetByID returns a message by its ID

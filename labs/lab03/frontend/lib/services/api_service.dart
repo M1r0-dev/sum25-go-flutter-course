@@ -5,118 +5,138 @@ import '../models/message.dart';
 class ApiService {
   static const String baseUrl = 'http://localhost:8080';
   static const Duration timeout = Duration(seconds: 30);
+  final http.Client _client;
 
-  late http.Client _client;
+  ApiService({http.Client? client}) : _client = client ?? http.Client();
 
-  ApiService() {
-    _client = http.Client();
-  }
-
-  void dispose() {
-    _client.close();
-  }
+  void dispose() => _client.close();
 
   Map<String, String> _getHeaders() => {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
-
-  T _handleResponse<T>(
-    http.Response response,
-    T Function(Map<String, dynamic>) fromJson,
-  ) {
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      final decoded = json.decode(response.body) as Map<String, dynamic>;
-      if (decoded.containsKey('data')) {
-        return fromJson(decoded['data'] as Map<String, dynamic>);
-      }
-      return fromJson(decoded);
-    } else if (response.statusCode >= 400 && response.statusCode < 500) {
-      throw ApiException('Client error: ${response.body}');
-    } else if (response.statusCode >= 500 && response.statusCode < 600) {
-      throw ServerException('Server error: ${response.body}');
-    } else {
-      throw ApiException('Unexpected error: ${response.statusCode}');
-    }
-  }
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
 
   Future<List<Message>> getMessages() async {
-    throw UnimplementedError('getMessages not implemented yet');
+    try {
+      final resp = await _client
+        .get(Uri.parse('$baseUrl/api/messages'), headers: _getHeaders())
+        .timeout(timeout);
+      if (resp.statusCode < 200 || resp.statusCode >= 300) {
+        throw ApiException('HTTP ${resp.statusCode}: ${resp.body}');
+      }
+      final bodyMap = json.decode(resp.body);
+      if (bodyMap is! Map<String, dynamic>) {
+        throw ApiException('Unexpected response format');
+      }
+      // check both lowercase and uppercase keys
+      final success = (bodyMap['success'] as bool?) ?? (bodyMap['Success'] as bool?);
+      final rawData = bodyMap['data'] ?? bodyMap['Data'];
+      if (success != true || rawData is! List) {
+        throw ApiException('Unexpected response format');
+      }
+      return (rawData as List)
+        .map((e) => Message.fromJson(e as Map<String, dynamic>))
+        .toList();
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw NetworkException(e.toString());
+    }
   }
 
   Future<Message> createMessage(CreateMessageRequest request) async {
-    throw UnimplementedError('createMessage not implemented yet');
+    final validation = request.validate();
+    if (validation != null) throw ValidationException(validation);
+    try {
+      final resp = await _client
+        .post(
+          Uri.parse('$baseUrl/api/messages'),
+          headers: _getHeaders(),
+          body: json.encode(request.toJson()),
+        )
+        .timeout(timeout);
+      if (resp.statusCode < 200 || resp.statusCode >= 300) {
+        throw ApiException('HTTP ${resp.statusCode}: ${resp.body}');
+      }
+      final jsonMap = json.decode(resp.body) as Map<String, dynamic>;
+      final data = jsonMap['data'] as Map<String, dynamic>;
+      return Message.fromJson(data);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw NetworkException(e.toString());
+    }
   }
 
   Future<Message> updateMessage(int id, UpdateMessageRequest request) async {
-    final validationError = request.validate();
-    if (validationError != null) {
-      throw ValidationException(validationError);
-    }
-
+    final validation = request.validate();
+    if (validation != null) throw ValidationException(validation);
     try {
-      final response = await _client
-          .put(
-            Uri.parse('$baseUrl/api/messages/$id'),
-            headers: _getHeaders(),
-            body: json.encode(request.toJson()),
-          )
-          .timeout(timeout);
-
-      return _handleResponse(response, (json) => Message.fromJson(json));
+      final resp = await _client
+        .put(
+          Uri.parse('$baseUrl/api/messages/$id'),
+          headers: _getHeaders(),
+          body: json.encode(request.toJson()),
+        )
+        .timeout(timeout);
+      if (resp.statusCode < 200 || resp.statusCode >= 300) {
+        throw ApiException('HTTP ${resp.statusCode}: ${resp.body}');
+      }
+      final jsonMap = json.decode(resp.body) as Map<String, dynamic>;
+      final data = jsonMap['data'] as Map<String, dynamic>;
+      return Message.fromJson(data);
     } catch (e) {
-      throw UnimplementedError('updateMessage error: $e');
+      if (e is ApiException) rethrow;
+      throw NetworkException(e.toString());
     }
   }
 
   Future<void> deleteMessage(int id) async {
     try {
-      final response = await _client
-          .delete(
-            Uri.parse('$baseUrl/api/messages/$id'),
-            headers: _getHeaders(),
-          )
-          .timeout(timeout);
-
-      if (response.statusCode != 204) {
-        throw UnimplementedError('deleteMessage failed with status ${response.statusCode}');
+      final resp = await _client
+        .delete(Uri.parse('$baseUrl/api/messages/$id'), headers: _getHeaders())
+        .timeout(timeout);
+      if (resp.statusCode != 204) {
+        throw ApiException('Delete failed: HTTP ${resp.statusCode}');
       }
     } catch (e) {
-      throw UnimplementedError('deleteMessage error: $e');
+      if (e is ApiException) rethrow;
+      throw NetworkException(e.toString());
     }
   }
 
-  Future<HTTPStatusResponse> getHTTPStatus(int statusCode) async {
-    if (statusCode < 100 || statusCode > 599) {
-      throw UnimplementedError('Invalid HTTP status code');
-    }
-
+  Future<HTTPStatusResponse> getHTTPStatus(int code) async {
+    if (code < 100 || code > 599) throw ValidationException('Invalid HTTP status code');
     try {
-      final response = await _client
-          .get(
-            Uri.parse('$baseUrl/api/status/$statusCode'),
-            headers: _getHeaders(),
-          )
-          .timeout(timeout);
-
-      return _handleResponse(response, (json) => HTTPStatusResponse.fromJson(json));
+      final resp = await _client
+        .get(Uri.parse('$baseUrl/api/status/$code'), headers: _getHeaders())
+        .timeout(timeout);
+      if (resp.statusCode < 200 || resp.statusCode >= 300) {
+        throw ApiException('HTTP ${resp.statusCode}: ${resp.body}');
+      }
+      final jsonMap = json.decode(resp.body) as Map<String, dynamic>;
+      final data = jsonMap['data'] as Map<String, dynamic>;
+      return HTTPStatusResponse(
+        statusCode: data['status_code'] as int,
+        imageUrl: '$baseUrl/api/cat/$code',
+        description: data['description'] as String,
+      );
     } catch (e) {
-      throw UnimplementedError('getHTTPStatus error: $e');
+      if (e is ApiException) rethrow;
+      throw NetworkException(e.toString());
     }
   }
 
   Future<Map<String, dynamic>> healthCheck() async {
     try {
-      final response = await _client
-          .get(
-            Uri.parse('$baseUrl/api/health'),
-            headers: _getHeaders(),
-          )
-          .timeout(timeout);
-
-      return json.decode(response.body) as Map<String, dynamic>;
+      final resp = await _client
+        .get(Uri.parse('$baseUrl/api/health'), headers: _getHeaders())
+        .timeout(timeout);
+      if (resp.statusCode < 200 || resp.statusCode >= 300) {
+        throw ApiException('HTTP ${resp.statusCode}: ${resp.body}');
+      }
+      return json.decode(resp.body) as Map<String, dynamic>;
     } catch (e) {
-      throw UnimplementedError('healthCheck error: $e');
+      if (e is ApiException) rethrow;
+      throw NetworkException(e.toString());
     }
   }
 }
@@ -125,7 +145,7 @@ class ApiException implements Exception {
   final String message;
   ApiException(this.message);
   @override
-  String toString() => 'ApiException: $message';
+  String toString() => message;
 }
 
 class NetworkException extends ApiException {
